@@ -1,0 +1,1392 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1316">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="hong fuk you">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>hong fuk you</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;700;800&family=Chakra+Petch:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: full-bleed 3D field; HUD pinned to the four safe corners; menus are one centered panel over a dimmed world */
+:root{
+  --ink:#0d1316; --panel:rgba(14,20,24,.9); --panel2:rgba(255,255,255,.04); --line:#2a383e;
+  --text:#e9f0ea; --muted:#8fa199; --zone:#4fb3ff; --hp:#5fd06c; --danger:#ff5a4f; --gold:#ffcf4a;
+  --display:"Black Han Sans","Gothic A1",system-ui,sans-serif;
+  --body:"Gothic A1",system-ui,sans-serif;
+  --data:"Chakra Petch","Gothic A1",ui-monospace,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(--text);font-family:var(--body);-webkit-user-select:none;user-select:none;touch-action:none}
+#game{position:fixed;inset:0;display:block;width:100%;height:100%}
+.hud{position:fixed;pointer-events:none;font-family:var(--data);text-shadow:0 1px 2px #000a}
+#hudTL{top:calc(10px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));display:grid;gap:6px}
+#hudTR{top:calc(10px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));display:grid;justify-items:end;gap:6px}
+#hudBL{bottom:calc(14px + env(safe-area-inset-bottom,0px));left:max(16px,env(safe-area-inset-left,0px));display:grid;gap:6px;width:min(260px,45vw)}
+#hudBR{bottom:calc(14px + env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px));display:grid;justify-items:end;gap:6px}
+.stage{font-family:var(--display);font-size:28px;letter-spacing:.02em;line-height:1}
+.timer{font-size:15px;color:var(--zone)}
+.stat{font-size:13px;color:var(--muted)} .stat b{color:var(--text);font-variant-numeric:tabular-nums}
+.bar{height:12px;background:#0008;border:1px solid #fff3;border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:var(--hp);transition:width .12s}
+.hplabel{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+.ammoRow{display:flex;align-items:baseline;gap:14px}
+.ammo{font-family:var(--data);font-size:34px;font-weight:700;font-variant-numeric:tabular-nums}
+.ammo small{font-size:14px;color:var(--muted)}
+.gren{font-size:14px;color:var(--muted)} .gren b{color:var(--text);font-size:18px}
+.slots{display:flex;gap:6px}
+.slot{min-width:96px;padding:6px 9px;border:1px solid #ffffff30;background:#0008;border-radius:3px;text-align:left;display:grid;gap:1px;pointer-events:auto;cursor:pointer;color:var(--text);font-family:var(--body)}
+.slot .k{font-family:var(--data);font-size:10px;color:var(--muted)}
+.slot b{font-size:13px;white-space:nowrap}
+.slot.cur{border-color:var(--gold);background:rgba(255,207,74,.16)}
+.slot.empty{opacity:.45;cursor:default}
+#radar{width:120px;height:120px;border-radius:50%;background:#0009;border:1px solid #fff2}
+#cross{position:fixed;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;pointer-events:none}
+#cross::before,#cross::after{content:"";position:absolute;background:#fff;box-shadow:0 0 2px #000}
+#cross::before{left:10px;top:0;width:2px;height:22px;clip-path:polygon(0 0,100% 0,100% 35%,0 35%,0 65%,100% 65%,100% 100%,0 100%)}
+#cross::after{top:10px;left:0;height:2px;width:22px;clip-path:polygon(0 0,35% 0,35% 100%,0 100%,0 0,65% 0,100% 0,100% 100%,65% 100%)}
+#cross.hit::before,#cross.hit::after{background:var(--danger)}
+#warn{position:fixed;left:50%;top:calc(74px + env(safe-area-inset-top,0px));transform:translateX(-50%);font-family:var(--display);font-size:20px;color:var(--zone);pointer-events:none;text-shadow:0 2px 4px #000;white-space:nowrap}
+#banner{position:fixed;left:50%;top:32%;transform:translate(-50%,-50%);font-family:var(--display);font-size:clamp(34px,7vw,64px);pointer-events:none;text-align:center;text-shadow:0 3px 0 #0008;opacity:0;transition:opacity .3s}
+#banner small{display:block;font-family:var(--body);font-weight:700;font-size:16px;color:var(--muted);margin-top:6px}
+#vignette{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 120px 30px var(--danger);opacity:0;transition:opacity .25s}
+#zoneTint{position:fixed;inset:0;pointer-events:none;background:rgba(79,179,255,.14);opacity:0;transition:opacity .3s}
+#bossWrap{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(420px,46vw);pointer-events:none;text-align:center}
+#bossName{font-family:var(--display);font-size:16px;color:var(--danger);margin-bottom:4px;text-shadow:0 1px 2px #000}
+#bossBar{background:var(--danger)!important}
+#toast{position:fixed;left:50%;bottom:calc(130px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#000b;border:1px solid #ffffff30;padding:8px 14px;border-radius:4px;font-weight:700;font-size:14px;pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
+#interact{position:fixed;left:50%;top:60%;transform:translateX(-50%);background:var(--gold);color:#1a1405;border:0;border-radius:4px;padding:10px 16px;font:400 18px var(--display);cursor:pointer;box-shadow:0 3px 0 #0006}
+#interact kbd{font-family:var(--data);font-size:14px;background:#0002;border-radius:3px;padding:0 6px;margin-right:8px}
+#interact small{display:block;font:700 12px var(--body);opacity:.75;margin-top:2px}
+
+.overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(6,10,12,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);overflow:auto;padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.panel{width:min(860px,100%);background:var(--panel);border:1px solid var(--line);border-radius:6px;display:grid;grid-template-columns:1.1fr 1fr;overflow:hidden}
+.panel>section{padding:24px;min-width:0;display:grid;align-content:start;gap:14px}
+.panel>section+section{border-left:1px solid var(--line);background:var(--panel2)}
+@media (max-width:700px){.panel{grid-template-columns:1fr}.panel>section+section{border-left:0;border-top:1px solid var(--line)}}
+.eyebrow{font-family:var(--data);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--zone)}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(40px,7vw,58px);line-height:.95;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0}
+p{margin:0;line-height:1.6;color:var(--muted);max-width:60ch}
+label{font-size:13px;font-weight:700}
+input[type=text]{width:100%;box-sizing:border-box;font:700 18px var(--body);padding:12px 14px;border-radius:4px;border:1px solid var(--line);background:#0006;color:var(--text)}
+input[type=text]:focus{outline:2px solid var(--zone);outline-offset:1px}
+.btn{font:400 22px var(--display);padding:14px 18px;border:0;border-radius:4px;background:var(--zone);color:#061118;cursor:pointer}
+.btn:hover{filter:brightness(1.08)} .btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-size:18px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px;color:var(--muted)}
+.keys kbd{font-family:var(--data);font-size:12px;color:var(--text);background:#ffffff12;border:1px solid #ffffff22;border-bottom-width:2px;border-radius:3px;padding:1px 6px;white-space:nowrap}
+.rank{list-style:none;margin:0;padding:0;display:grid;gap:2px;font-variant-numeric:tabular-nums}
+.rank li{display:grid;grid-template-columns:30px 1fr auto auto;gap:10px;align-items:baseline;padding:7px 8px;border-radius:3px;font-size:14px}
+.rank li:nth-child(odd){background:#ffffff08}
+.rank li.me{background:rgba(79,179,255,.16);outline:1px solid rgba(79,179,255,.4)}
+.rank .no{font-family:var(--data);font-weight:700;color:var(--muted)}
+.rank li:nth-child(1) .no{color:var(--gold)}
+.rank .nick{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.rank .st{font-family:var(--data);font-size:12px;color:var(--muted)}
+.rank .sc{font-family:var(--data);font-weight:700}
+.rankmsg{font-size:13px;color:var(--muted)}
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.statgrid div{background:#ffffff08;border-radius:4px;padding:10px;display:grid;gap:2px}
+.statgrid span{font-size:11px;color:var(--muted)} .statgrid b{font-family:var(--data);font-size:22px;font-variant-numeric:tabular-nums}
+@media (max-width:420px){.statgrid{grid-template-columns:repeat(2,1fr)}}
+.save{font-size:14px;font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:min(760px,100%)}
+@media (max-width:640px){.cards{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;text-align:left;color:var(--text);cursor:pointer;display:grid;gap:6px;font-family:var(--body)}
+.card:hover,.card:focus-visible{border-color:var(--zone);outline:none;transform:translateY(-2px)}
+.card.weapon{border-color:var(--gold)}
+.card .tag{font-family:var(--data);font-size:11px;letter-spacing:.12em;color:var(--zone)}
+.card.weapon .tag{color:var(--gold)}
+.card b{font-family:var(--display);font-weight:400;font-size:22px}
+.card span{font-size:13px;color:var(--muted)}
+.upwrap{display:grid;gap:16px;justify-items:center;text-align:center}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+
+/* touch controls: Minecraft-style d-pad on the left, action buttons on the right */
+#touch{position:fixed;inset:0;pointer-events:none}
+#touch{--ui:1}
+#dpad{position:absolute;left:calc(max(16px,env(safe-area-inset-left,0px)) + 4px);bottom:calc(16px + env(safe-area-inset-bottom,0px));width:calc(186px*var(--ui));height:calc(186px*var(--ui));display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:4px;pointer-events:auto;touch-action:none}
+.dk{background:rgba(200,200,200,.22);border:2px solid rgba(255,255,255,.35);border-radius:4px;display:grid;place-items:center;color:#fff;font:400 20px var(--display);text-shadow:0 1px 2px #000}
+.dk.c{font-size:13px;border-radius:50%;background:rgba(200,200,200,.14)}
+.dk.diag{opacity:0;transition:opacity .1s}
+#dpad.fwd .dk.diag{opacity:1}
+.dk.on{background:rgba(255,255,255,.5)}
+.dk.blank{visibility:hidden}
+.tbtn{position:absolute;border-radius:50%;background:#ffffff1c;border:1px solid #ffffff40;color:#fff;font:400 15px var(--display);display:grid;place-items:center;pointer-events:auto;text-shadow:0 1px 2px #000}
+#fireBtn{right:calc(max(16px,env(safe-area-inset-right,0px)) + 10px);bottom:calc(100px*var(--ui) + env(safe-area-inset-bottom,0px));width:calc(96px*var(--ui));height:calc(96px*var(--ui));background:rgba(255,90,79,.35)}
+#fireBtn.on{background:rgba(255,90,79,.6)}
+#grenBtn{right:calc(max(16px,env(safe-area-inset-right,0px)) + 124px*var(--ui));bottom:calc(40px*var(--ui) + env(safe-area-inset-bottom,0px));width:calc(60px*var(--ui));height:calc(60px*var(--ui));font-size:13px;background:rgba(95,208,108,.28)}
+#reloadBtn{right:calc(max(16px,env(safe-area-inset-right,0px)) + 30px*var(--ui));bottom:calc(210px*var(--ui) + env(safe-area-inset-bottom,0px));width:calc(52px*var(--ui));height:calc(52px*var(--ui));font-size:13px}
+#scopeBtn{right:calc(max(16px,env(safe-area-inset-right,0px)) + 124px*var(--ui));bottom:calc(150px*var(--ui) + env(safe-area-inset-bottom,0px));width:calc(58px*var(--ui));height:calc(58px*var(--ui));font-size:13px}
+#scopeBtn.on{background:rgba(79,179,255,.45)}
+body.touch #hudBL{left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));width:min(240px,34vw)}
+body.touch #hudBR{right:auto;left:50%;transform:translateX(-50%);justify-items:center}
+body.touch .ammo{font-size:24px}
+body.touch .slot{min-width:80px}
+body.touch #toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+#muteBtn,#pauseBtn{position:fixed;top:calc(140px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));pointer-events:auto;background:#0007;border:1px solid #fff3;color:var(--text);border-radius:4px;font:700 12px var(--body);padding:5px 8px;cursor:pointer}
+#pauseBtn{right:calc(max(16px,env(safe-area-inset-right,0px)) + 76px);font-size:13px;padding:5px 10px}
+.settings{display:grid;gap:12px;width:min(420px,100%);text-align:left;background:#ffffff08;border:1px solid var(--line);border-radius:4px;padding:14px;box-sizing:border-box}
+.settings .ttl{font-family:var(--data);font-size:12px;letter-spacing:.14em;color:var(--zone)}
+.set{display:grid;gap:6px}
+.set label{display:flex;justify-content:space-between}
+.set input[type=range]{width:100%;accent-color:var(--zone)}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;font:700 13px var(--body);padding:8px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+.seg button.on{background:var(--zone);color:#061118;border-color:var(--zone)}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:13px;font-weight:700;line-height:1.4}
+.chk input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--zone)}
+.chk span{font-weight:400;color:var(--muted);display:block}
+body:not(.touch) .touchOnly{display:none!important}
+#fsBtn{font-size:15px;padding:10px}
+#scope{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,transparent 0,transparent min(34vh,34vw),#000 calc(min(34vh,34vw) + 1px))}
+#scope::before{content:"";position:absolute;left:50%;top:50%;width:min(68vh,68vw);height:min(68vh,68vw);transform:translate(-50%,-50%);border-radius:50%;box-shadow:inset 0 0 0 3px #111,inset 0 0 40px #0008;background:linear-gradient(#000c,#000c) center/1px 100% no-repeat,linear-gradient(#000c,#000c) center/100% 1px no-repeat}
+#scope::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:var(--danger);box-shadow:0 0 4px var(--danger)}
+#rotate{position:fixed;inset:0;display:grid;place-items:center;align-content:center;gap:14px;background:var(--ink);text-align:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));z-index:20}
+#rotate .ph{width:56px;height:92px;border:3px solid var(--text);border-radius:10px;animation:turn 1.6s ease-in-out infinite}
+@keyframes turn{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+#rotate b{font-family:var(--display);font-weight:400;font-size:24px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+<div id="zoneTint"></div>
+<div id="vignette"></div>
+<div id="scope"></div>
+<div id="cross" hidden></div>
+<div id="warn" hidden>자기장 밖입니다 · 파란 원 안으로 이동</div>
+<div id="banner"></div>
+<div id="toast"></div>
+<button id="interact" type="button" hidden></button>
+
+<div id="hud" hidden>
+  <div class="hud" id="hudTL">
+    <div class="stage" id="hStage">STAGE 1</div>
+    <div class="timer" id="hTimer">생존까지 30.0초</div>
+    <div class="stat">처치 <b id="hKills">0</b> · 점수 <b id="hScore">0</b></div>
+  </div>
+  <div class="hud" id="hudTR"><canvas id="radar" width="240" height="240"></canvas></div>
+  <div id="bossWrap" hidden>
+    <div id="bossName">보스</div>
+    <div class="bar"><i id="bossBar"></i></div>
+  </div>
+  <div class="hud" id="hudBL">
+    <div class="hplabel"><span>체력</span><span id="hHp">100 / 100</span></div>
+    <div class="bar"><i id="hHpBar"></i></div>
+  </div>
+  <div class="hud" id="hudBR">
+    <div class="slots">
+      <button class="slot cur" id="slot0" type="button"><span class="k">1</span><b>권총</b></button>
+      <button class="slot empty" id="slot1" type="button"><span class="k">2</span><b>비어 있음</b></button>
+    </div>
+    <div class="ammoRow">
+      <span class="gren">수류탄 <b id="hGren">2</b></span>
+      <span class="ammo"><span id="hAmmo">12</span><small id="hMag"> / 12</small></span>
+    </div>
+    <div class="stat" id="hReload"></div>
+  </div>
+  <button id="pauseBtn" type="button">일시정지</button>
+  <button id="muteBtn" type="button">소리 켜짐</button>
+</div>
+
+<div class="settings" id="settings">
+  <div class="ttl">설정</div>
+  <div class="set"><label for="sens"><span>시점 감도</span><b id="sensVal">1.0</b></label><input type="range" id="sens" min="0.3" max="2" step="0.1" value="1"></div>
+  <div class="set touchOnly"><label><span>버튼 크기</span></label><div class="seg" id="uiSeg"><button type="button" data-v="0.85">작게</button><button type="button" data-v="1">보통</button><button type="button" data-v="1.2">크게</button></div></div>
+  <label class="chk touchOnly"><input type="checkbox" id="autoFire"><div>자동 사격<span>조준점에 적이 들어오면 알아서 쏴요</span></div></label>
+  <label class="chk touchOnly"><input type="checkbox" id="aimAssist"><div>조준 보조<span>조준점 가까이 있는 적에게 시점이 살짝 따라붙어요</span></div></label>
+  <button class="btn ghost" id="fsBtn" type="button">전체화면으로 하기</button>
+</div>
+
+<div id="touch" hidden>
+  <div id="dpad">
+    <div class="dk diag" data-k="ul">◤</div><div class="dk" data-k="u">▲</div><div class="dk diag" data-k="ur">◥</div>
+    <div class="dk" data-k="l">◀</div><div class="dk c" data-k="c">점프</div><div class="dk" data-k="r">▶</div>
+    <div class="dk blank"></div><div class="dk" data-k="d">▼</div><div class="dk blank"></div>
+  </div>
+  <div class="tbtn" id="fireBtn">사격</div>
+  <div class="tbtn" id="grenBtn">수류탄</div>
+  <div class="tbtn" id="reloadBtn">장전</div>
+  <div class="tbtn" id="scopeBtn" hidden>조준</div>
+</div>
+
+<div id="rotate" hidden><div class="ph"></div><b>폰을 가로로 돌려 주세요</b><p>가로 화면에서 조작이 훨씬 편해요. 게임은 일시정지 상태예요.</p></div>
+
+<!-- MENU -->
+<div class="overlay" id="menu">
+  <div class="panel">
+    <section>
+      <div class="eyebrow">3인칭 블록 생존 슈터</div>
+      <h1>hong fuk you</h1>
+      <p>자기장이 줄어드는 섬에서 몰려오는 감염체를 버티세요. 단계마다 보스가 나오고, 덩치 큰 놈과 빠른 꼬마들이 한 마리씩 더 늘어납니다. 권총 하나로 시작해서 보급 상자와 레벨업으로 더 좋은 총을 챙기세요.</p>
+      <div style="display:grid;gap:6px">
+        <label for="nick">랭킹에 표시될 닉네임</label>
+        <input type="text" id="nick" maxlength="12" placeholder="최대 12자" autocomplete="off">
+      </div>
+      <button class="btn" id="startBtn" type="button">게임 시작</button>
+      <div id="menuSet"></div>
+      <div class="keys" id="keysPC">
+        <kbd>W A S D</kbd><span>이동 (Shift 달리기) · Space 점프</span>
+        <kbd>마우스</kbd><span>시점 회전 · 클릭하면 마우스가 화면에 고정돼요</span>
+        <kbd>왼쪽 클릭</kbd><span>사격 · 반동으로 총구가 올라가요</span>
+        <kbd>오른쪽 클릭</kbd><span>스코프 조준 (스코프 달린 총만 · Q로 켜고 끄기)</span>
+        <kbd>1 · 2 · 휠</kbd><span>총 바꾸기 (최대 두 자루)</span>
+        <kbd>G</kbd><span>수류탄 던지기 · 범위 안에 있으면 나도 다쳐요</span>
+        <kbd>E</kbd><span>보급 상자 열기 · R 재장전 · Esc 일시정지</span>
+      </div>
+      <div class="keys" id="keysTouch" hidden>
+        <kbd>왼쪽 방향키</kbd><span>이동 · ▲를 두 번 누르면 달리기 · 가운데 점프</span>
+        <kbd>화면 오른쪽 드래그</kbd><span>시점 회전</span>
+        <kbd>사격 버튼</kbd><span>누른 채 끌면 쏘면서 조준 · 자동 사격을 켜면 안 눌러도 돼요</span>
+        <kbd>무기 칸</kbd><span>아래쪽 총 이름을 누르면 바꿔 들어요</span>
+        <kbd>가로 화면</kbd><span>폰을 가로로 돌려서 플레이하세요</span>
+      </div>
+    </section>
+    <section>
+      <h2>명예의 전당</h2>
+      <ol class="rank" id="rankMenu"></ol>
+      <div class="rankmsg" id="rankMsgMenu">랭킹을 불러오는 중…</div>
+    </section>
+  </div>
+</div>
+
+<!-- PAUSE -->
+<div class="overlay" id="pause" hidden>
+  <div class="upwrap">
+    <h1>일시정지</h1>
+    <p>설정을 바꾸고 계속하기를 누르세요.</p>
+    <div id="pauseSet"></div>
+    <div class="row"><button class="btn" id="resumeBtn" type="button">계속하기</button><button class="btn ghost" id="quitBtn" type="button">포기하고 기록 저장</button></div>
+  </div>
+</div>
+
+<!-- UPGRADE -->
+<div class="overlay" id="upgrade" hidden>
+  <div class="upwrap">
+    <div class="eyebrow" id="upEyebrow">STAGE 1 생존 성공</div>
+    <h1>보급품 선택</h1>
+    <p id="upDesc">하나를 고르면 다음 단계가 바로 시작됩니다.</p>
+    <div class="cards" id="cards"></div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="overlay" id="over" hidden>
+  <div class="panel">
+    <section>
+      <div class="eyebrow">전투 종료</div>
+      <h1 id="overTitle">탈락</h1>
+      <div class="statgrid">
+        <div><span>도달 단계</span><b id="oStage">1</b></div>
+        <div><span>처치</span><b id="oKills">0</b></div>
+        <div><span>생존 시간</span><b id="oTime">0초</b></div>
+        <div><span>점수</span><b id="oScore">0</b></div>
+      </div>
+      <div class="save" id="saveMsg"></div>
+      <div class="row"><button class="btn" id="againBtn" type="button">다시 도전</button><button class="btn ghost" id="toMenuBtn" type="button">처음 화면</button></div>
+    </section>
+    <section>
+      <h2>명예의 전당</h2>
+      <ol class="rank" id="rankOver"></ol>
+      <div class="rankmsg" id="rankMsgOver"></div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const isTouch = matchMedia("(pointer: coarse)").matches || ("ontouchstart" in window && navigator.maxTouchPoints > 0);
+if (isTouch) { document.body.classList.add("touch"); $("keysPC").hidden = true; $("keysTouch").hidden = false; }
+
+const ls = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+};
+$("nick").value = ls.get("bs-nick") || "";
+let SET = { sens: 1, ui: 1, autoFire: isTouch, assist: isTouch };
+try { Object.assign(SET, JSON.parse(ls.get("bs-set") || "{}")); } catch(e){}
+
+/* ---------- weapons ---------- */
+const WEAPONS = {
+  pistol:  { name:"권총",       auto:false, dmg:32,  rate:4.5, mag:12, reload:1.1, pellets:1, spread:0.012, kick:0.022, scope:0, len:0.45, col:0x2b2f33, snd:[260,80,0.08,"square",0.07] },
+  shotgun: { name:"샷건",       auto:false, dmg:17,  rate:1.3, mag:6,  reload:2.2, pellets:9, spread:0.11,  kick:0.07,  scope:0, len:0.85, col:0x5a3b22, range:28, snd:[140,40,0.2,"sawtooth",0.1] },
+  mg:      { name:"기관총",     auto:true,  dmg:21,  rate:11,  mag:60, reload:2.8, pellets:1, spread:0.03,  kick:0.02,  scope:0, len:1.0,  col:0x3a4030, snd:[200,70,0.06,"square",0.06] },
+  ar:      { name:"돌격소총",   auto:true,  dmg:30,  rate:9.5, mag:30, reload:1.8, pellets:1, spread:0.016, kick:0.02,  scope:2.5, len:0.9, col:0x2f3b4a, snd:[230,70,0.07,"square",0.07] },
+  sniper:  { name:"저격소총",   auto:false, dmg:190, rate:1.0, mag:5,  reload:2.4, pellets:1, spread:0.004, kick:0.1,   scope:5, len:1.25, col:0x3d3324, pierce:true, snd:[120,30,0.35,"sawtooth",0.12] },
+  aa12:    { name:"연발 샷건",  auto:true,  dmg:17,  rate:4,   mag:12, reload:2.4, pellets:9, spread:0.1,   kick:0.055, scope:0, len:0.9,  col:0x6b2525, range:28, snd:[150,40,0.15,"sawtooth",0.09] },
+};
+const CRATE_POOL = [["ar",4],["sniper",3],["aa12",3],["mg",2]];
+const GREN_MAX = 6, GREN_R = 7.5;
+
+/* ---------- three setup ---------- */
+const canvas = $("game");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isTouch ? 1 : 1.5));
+renderer.shadowMap.enabled = !isTouch;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+const scene = new THREE.Scene();
+const SKY = 0x9fd4ee;
+scene.background = new THREE.Color(SKY);
+scene.fog = new THREE.Fog(SKY, 30, 95);
+const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 200);
+scene.add(new THREE.HemisphereLight(0xdff2ff, 0x5b6b3a, 0.75));
+const sun = new THREE.DirectionalLight(0xfff3d6, 0.85);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 120 });
+scene.add(sun); scene.add(sun.target);
+function resize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize); resize();
+
+function pixTex(colors, size = 16, seed = 1){
+  const c = document.createElement("canvas"); c.width = c.height = size;
+  const g = c.getContext("2d");
+  let s = seed;
+  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) { g.fillStyle = colors[Math.floor(rnd() * colors.length)]; g.fillRect(x, y, 1, 1); }
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+const TEX = {
+  grass: pixTex(["#6ea84a","#79b552","#64993f","#82bd5a","#6ea84a"], 16, 7),
+  bark:  pixTex(["#6b4a2b","#5c3f24","#7a5533","#6b4a2b"], 16, 3),
+  leaf:  pixTex(["#3f8a3a","#4d9b44","#357a31","#5aa84f"], 16, 11),
+  stone: pixTex(["#8a8f92","#7b8083","#999ea1","#6f7477"], 16, 5),
+  crate: pixTex(["#b0803f","#a27237","#bd8c48","#8f6330"], 16, 9),
+  brick: pixTex(["#9a5a46","#a8644f","#8a4f3d","#b06d57"], 16, 13),
+  sand:  pixTex(["#d9c98f","#cfbe83","#e2d39b"], 16, 17),
+  supply:pixTex(["#3d6fb6","#3566a8","#4679c2","#2f5d9c"], 16, 21),
+};
+const MAT = {};
+for (const k in TEX) MAT[k] = new THREE.MeshLambertMaterial({ map: TEX[k] });
+
+/* ---------- world ---------- */
+const HALF = 60;
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(HALF*2, HALF*2), MAT.grass.clone());
+ground.material.map = TEX.grass.clone(); ground.material.map.needsUpdate = true;
+ground.material.map.repeat.set(HALF, HALF);
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true;
+scene.add(ground);
+const water = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshLambertMaterial({ color: 0x6fb7d8 }));
+water.rotation.x = -Math.PI/2; water.position.y = -0.3; scene.add(water);
+const beach = new THREE.Mesh(new THREE.BoxGeometry(HALF*2+6, 0.6, HALF*2+6), MAT.sand); beach.position.y = -0.31; scene.add(beach);
+
+const colliders = [], solidMeshes = [];
+const box = (w,h,d,mat,x,y,z,collide=true,cast=true) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
+  m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true;
+  scene.add(m); solidMeshes.push(m);
+  if (collide) colliders.push({ minX:x-w/2, maxX:x+w/2, minZ:z-d/2, maxZ:z+d/2, top:y+h/2 });
+  return m;
+};
+function overlapsAny(x, z, r){
+  for (const c of colliders) if (x+r > c.minX && x-r < c.maxX && z+r > c.minZ && z-r < c.maxZ) return true;
+  return false;
+}
+function insideSolid(x, y, z, r){
+  for (const c of colliders) if (y < c.top && x+r > c.minX && x-r < c.maxX && z+r > c.minZ && z-r < c.maxZ) return true;
+  return false;
+}
+(function buildWorld(){
+  let s = 42; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const place = (fn, n, r) => {
+    for (let i = 0; i < n; i++) for (let t = 0; t < 20; t++) {
+      const x = (rnd()*2-1)*(HALF-4), z = (rnd()*2-1)*(HALF-4);
+      if (Math.hypot(x, z) < 8 || overlapsAny(x, z, r)) continue;
+      fn(x, z, rnd); break;
+    }
+  };
+  place((x,z) => { box(1,3,1,MAT.bark,x,1.5,z); box(3,2,3,MAT.leaf,x,3.8,z,false); box(1.6,1,1.6,MAT.leaf,x,5.3,z,false); }, isTouch ? 24 : 34, 2.2);
+  place((x,z,r) => { const w = 1.5+r()*1.5, h = 1+r()*1.2; box(w,h,w*0.9,MAT.stone,x,h/2,z); }, 18, 2);
+  place((x,z,r) => { box(1.2,1.2,1.2,MAT.crate,x,0.6,z); if (r() < .5) box(1.2,1.2,1.2,MAT.crate,x,1.8,z,false); if (r() < .6) box(1.2,1.2,1.2,MAT.crate,x+1.25,0.6,z); }, 16, 2.4);
+  place((x,z,r) => { const along = r() < .5; box(along?5:1, 2.2, along?1:5, MAT.brick, x, 1.1, z); }, 12, 3.2);
+})();
+
+const zoneMat = new THREE.MeshBasicMaterial({ color: 0x4fb3ff, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false });
+const zoneMesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 40, 64, 1, true), zoneMat);
+zoneMesh.position.y = 20; scene.add(zoneMesh);
+const zoneRing = new THREE.Mesh(new THREE.RingGeometry(0.985, 1, 96), new THREE.MeshBasicMaterial({ color: 0x4fb3ff, side: THREE.DoubleSide }));
+zoneRing.rotation.x = -Math.PI/2; zoneRing.position.y = 0.05; scene.add(zoneRing);
+
+/* ---------- characters ---------- */
+function makeHumanoid(c){
+  const g = new THREE.Group();
+  const lam = col => new THREE.MeshLambertMaterial({ color: col });
+  const part = (w,h,d,col,x,y,z,parent=g) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), lam(col)); m.position.set(x,y,z); m.castShadow = true; parent.add(m); return m; };
+  const pivot = (x,y,z) => { const p = new THREE.Group(); p.position.set(x,y,z); g.add(p); return p; };
+  const legL = pivot(-0.15,0.75,0), legR = pivot(0.15,0.75,0);
+  part(0.28,0.75,0.28,c.legs,0,-0.375,0,legL); part(0.28,0.75,0.28,c.legs,0,-0.375,0,legR);
+  part(0.6,0.75,0.32,c.body,0,1.125,0);
+  const armL = pivot(-0.42,1.45,0), armR = pivot(0.42,1.45,0);
+  part(0.24,0.72,0.24,c.arms,0,-0.33,0,armL); part(0.24,0.72,0.24,c.arms,0,-0.33,0,armR);
+  const head = part(0.5,0.5,0.5,c.head,0,1.76,0);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: c.eyes });
+  [-0.12,0.12].forEach(x => { const e = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.07,0.02), eyeMat); e.position.set(x,0.03,-0.26); head.add(e); });
+  return { g, legL, legR, armL, armR, head };
+}
+
+const player = {
+  pos: new THREE.Vector3(0,0,0), vy: 0, onGround: true, yaw: 0, pitch: 0.15,
+  hp: 100, maxHp: 100, speed: 6, regen: 0, lastShot: 0, walk: 0, alive: true, hurtT: 0, reload: 0,
+  dmgMul: 1, rateMul: 1, magMul: 1, reloadMul: 1,
+  slots: [{ id: "pistol", ammo: 12 }, null], cur: 0, grenades: 2,
+};
+const W = () => WEAPONS[player.slots[player.cur].id];
+const S = () => player.slots[player.cur];
+const magOf = w => Math.round(w.mag * player.magMul);
+
+const pm = makeHumanoid({ legs:0x3b4a6b, body:0xd9622b, arms:0xd9622b, head:0xe8b98f, eyes:0x1b1b1b });
+scene.add(pm.g);
+const gunMat = new THREE.MeshLambertMaterial({ color: 0x2b2f33 });
+const gun = new THREE.Mesh(new THREE.BoxGeometry(0.14,0.16,0.7), gunMat);
+gun.position.set(0,-0.62,-0.28); pm.armR.add(gun);
+const muzzle = new THREE.Object3D(); muzzle.position.set(0,0,-0.38); gun.add(muzzle);
+const flash = new THREE.Mesh(new THREE.BoxGeometry(0.22,0.22,0.22), new THREE.MeshBasicMaterial({ color: 0xffd36b }));
+flash.visible = false; muzzle.add(flash);
+function applyGunLook(){ const w = W(); gun.scale.set(1, 1, w.len/0.7); gunMat.color.setHex(w.col); }
+
+const TYPES = {
+  walker:  { name:"감염체", hp: 60,  speed: 2.6, dmg: 10, score: 10, scale: 1.0,  col:{ legs:0x3c3550, body:0x5d6f62, arms:0x7b8f73, head:0x7b8f73, eyes:0xff3b30 } },
+  runner:  { name:"꼬마",   hp: 35,  speed: 5.8, dmg: 7,  score: 15, scale: 0.7,  col:{ legs:0x2b2b33, body:0xb8a24a, arms:0x9fb07a, head:0x9fb07a, eyes:0xfff04a } },
+  brute:   { name:"덩치",   hp: 260, speed: 1.9, dmg: 24, score: 40, scale: 1.6,  col:{ legs:0x2f2a26, body:0x6b3b3b, arms:0x84705e, head:0x84705e, eyes:0xff7a00 } },
+  spitter: { name:"침쟁이", hp: 80,  speed: 2.4, dmg: 12, score: 30, scale: 1.05, col:{ legs:0x2d3a3a, body:0x4a6d8c, arms:0x8fa7a0, head:0x8fa7a0, eyes:0x7dfcff }, ranged: true },
+  boss:    { name:"거대 감염체", hp: 900, speed: 2.3, dmg: 34, score: 500, scale: 2.7, col:{ legs:0x1c1c22, body:0x7a1f2b, arms:0x4b5d4a, head:0x4b5d4a, eyes:0xff2020 }, boss: true },
+};
+const enemies = [], shots = [], pickups = [], tracers = [], puffs = [], grenades = [], blasts = [], crates = [];
+const hitGeo = new THREE.BoxGeometry(0.9, 2.1, 0.9);
+const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+
+function spawnEnemy(type){
+  const n = game.stage;
+  if (!type) {
+    const pool = ["walker","walker","walker"];
+    if (n >= 2) pool.push("runner");
+    if (n >= 3) pool.push("spitter");
+    if (n >= 5) pool.push("spitter","walker","runner");
+    type = pool[Math.floor(Math.random()*pool.length)];
+  }
+  const T = TYPES[type];
+  let x, z, ok = false;
+  for (let t = 0; t < 16 && !ok; t++) {
+    const a = Math.random()*Math.PI*2, d = (T.boss ? 24 : 22) + Math.random()*12;
+    x = player.pos.x + Math.cos(a)*d; z = player.pos.z + Math.sin(a)*d;
+    ok = Math.abs(x) < HALF-3 && Math.abs(z) < HALF-3 && !overlapsAny(x, z, 0.5*T.scale);
+  }
+  if (!ok) return false;
+  const h = makeHumanoid(T.col);
+  h.g.scale.setScalar(T.scale);
+  const hb = new THREE.Mesh(hitGeo, hitMat); hb.position.y = 1.05; h.g.add(hb);
+  h.g.position.set(x, 0, z); scene.add(h.g);
+  const mult = T.boss ? 1 + 0.45*(n-1) : 1 + 0.16*(n-1);
+  const e = { type, T, m: h, hb, pos: h.g.position, hp: T.hp*mult, maxHp: T.hp*mult,
+    speed: T.speed*(1+(T.boss ? 0.04 : 0.05)*(n-1))*(T.boss ? 1 : 0.9+Math.random()*0.2),
+    cd: 0, walk: Math.random()*6, flash: 0, r: 0.45*T.scale, shootCd: 1.5+Math.random(), chargeCd: 4, state: null, stT: 0, dead: false };
+  hb.userData.enemy = e;
+  enemies.push(e);
+  if (T.boss) { toast(`보스 등장 · ${T.name} Lv.${n}`); sfx("stage"); }
+  return true;
+}
+function removeEnemy(e){ scene.remove(e.m.g); const i = enemies.indexOf(e); if (i >= 0) enemies.splice(i, 1); }
+
+/* ---------- collision ---------- */
+function resolve(pos, r){
+  for (const c of colliders) {
+    if (pos.y >= c.top - 0.05) continue;
+    const cx = Math.max(c.minX, Math.min(pos.x, c.maxX)), cz = Math.max(c.minZ, Math.min(pos.z, c.maxZ));
+    const dx = pos.x - cx, dz = pos.z - cz, d2 = dx*dx + dz*dz;
+    if (d2 < r*r) {
+      if (d2 > 1e-8) { const d = Math.sqrt(d2), p = (r-d)/d; pos.x += dx*p; pos.z += dz*p; }
+      else {
+        const pl = [pos.x-c.minX, c.maxX-pos.x, pos.z-c.minZ, c.maxZ-pos.z], m = Math.min(...pl);
+        if (m === pl[0]) pos.x = c.minX - r; else if (m === pl[1]) pos.x = c.maxX + r;
+        else if (m === pl[2]) pos.z = c.minZ - r; else pos.z = c.maxZ + r;
+      }
+    }
+  }
+  pos.x = Math.max(-HALF+0.5, Math.min(HALF-0.5, pos.x));
+  pos.z = Math.max(-HALF+0.5, Math.min(HALF-0.5, pos.z));
+}
+function groundHeightAt(x, z, r){
+  let h = 0;
+  for (const c of colliders) if (x+r > c.minX && x-r < c.maxX && z+r > c.minZ && z-r < c.maxZ) h = Math.max(h, c.top);
+  return h;
+}
+
+/* ---------- audio ---------- */
+let actx = null, muted = ls.get("bs-mute") === "1";
+$("muteBtn").textContent = muted ? "소리 꺼짐" : "소리 켜짐";
+$("muteBtn").addEventListener("click", e => { e.stopPropagation(); muted = !muted; ls.set("bs-mute", muted ? "1" : "0"); $("muteBtn").textContent = muted ? "소리 꺼짐" : "소리 켜짐"; });
+function initAudio(){ if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} } if (actx && actx.state === "suspended") actx.resume(); }
+const SFX = { hit:[900,500,0.05,"triangle",0.06], kill:[300,90,0.18,"sawtooth",0.08], hurt:[160,80,0.2,"sawtooth",0.1], pick:[500,1100,0.15,"sine",0.08], stage:[440,880,0.4,"triangle",0.09], click:[700,600,0.04,"square",0.04], swap:[400,600,0.06,"triangle",0.05] };
+function tone(P){
+  if (!actx || muted) return;
+  const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+  o.connect(g); g.connect(actx.destination);
+  o.type = P[3]; o.frequency.setValueAtTime(P[0], t); o.frequency.exponentialRampToValueAtTime(P[1], t+P[2]);
+  g.gain.setValueAtTime(P[4], t); g.gain.exponentialRampToValueAtTime(0.0001, t+P[2]);
+  o.start(t); o.stop(t+P[2]+0.02);
+}
+function sfx(kind){ tone(SFX[kind]); }
+function boomSound(){
+  if (!actx || muted) return;
+  const len = Math.floor(actx.sampleRate*0.7), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.5);
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const f = actx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 800;
+  const g = actx.createGain(); g.gain.value = 0.6;
+  src.connect(f); f.connect(g); g.connect(actx.destination); src.start();
+}
+function buzz(ms){ if (!isTouch || muted) return; try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} }
+
+/* ---------- UI helpers ---------- */
+let toastT = 0;
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.style.opacity = 1; toastT = 2.6; }
+let bannerT = 0;
+function banner(t, sub){ const b = $("banner"); b.innerHTML = ""; b.append(t); const s = document.createElement("small"); s.textContent = sub || ""; b.append(s); b.style.opacity = 1; bannerT = 2.2; }
+
+/* ---------- input ---------- */
+const keys = {};
+let mouseDown = false, locked = false, hadLock = false, semiLatch = false;
+let aiming = false, aimT = 0, recoilOff = 0, bloom = 0, gunKick = 0, swapT = 0, grenCd = 0, shakeT = 0;
+const touch = { mx: 0, mz: 0, fire: false, sprint: false, lookId: null, lx: 0, ly: 0 };
+function setAim(on){
+  if (on && !(W().scope > 0)) on = false;
+  aiming = on; $("scopeBtn").classList.toggle("on", on);
+}
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+addEventListener("keydown", e => {
+  keys[e.code] = true;
+  if (game.state !== "play") return;
+  if (e.code === "KeyR") startReload();
+  if (e.code === "Space") { e.preventDefault(); jump(); }
+  if (e.code === "KeyQ" && !e.repeat) setAim(!aiming);
+  if (e.code === "Digit1") switchTo(0);
+  if (e.code === "Digit2") switchTo(1);
+  if (e.code === "KeyG" && !e.repeat) throwGrenade();
+  if (e.code === "KeyE" && !e.repeat) tryOpenCrate();
+});
+addEventListener("keyup", e => { keys[e.code] = false; });
+let wheelT = 0;
+addEventListener("wheel", e => { if (game.state !== "play") return; const now = performance.now(); if (now - wheelT < 200) return; wheelT = now; switchTo(player.cur === 0 ? 1 : 0); }, { passive: true });
+canvas.addEventListener("mousedown", e => {
+  if (game.state !== "play" || isTouch) return;
+  if (!locked && canvas.requestPointerLock) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(()=>{}); } catch(err){} }
+  if (e.button === 0) mouseDown = true;
+  if (e.button === 2) setAim(true);
+});
+addEventListener("mouseup", e => { if (e.button === 0) { mouseDown = false; semiLatch = false; } if (e.button === 2) setAim(false); });
+let dragLook = null;
+canvas.addEventListener("pointerdown", e => { if (!isTouch && e.pointerType === "mouse") dragLook = { x: e.clientX, y: e.clientY }; });
+addEventListener("pointerup", () => { dragLook = null; });
+addEventListener("mousemove", e => {
+  if (game.state !== "play" || isTouch) return;
+  if (locked) look(e.movementX, e.movementY, 0.0024);
+  else if (dragLook) { look(e.clientX - dragLook.x, e.clientY - dragLook.y, 0.005); dragLook = { x: e.clientX, y: e.clientY }; }
+});
+document.addEventListener("pointerlockchange", () => {
+  locked = document.pointerLockElement === canvas;
+  if (locked) hadLock = true;
+  else if (hadLock && game.state === "play") pauseGame();
+});
+function look(dx, dy, s){
+  s *= Math.max(0.18, camera.fov / 70) * SET.sens;
+  player.yaw -= dx*s;
+  player.pitch = Math.max(-0.55, Math.min(0.85, player.pitch + dy*s));
+}
+function jump(){ if (player.onGround && game.state === "play") { player.vy = 7.2; player.onGround = false; } }
+[0,1].forEach(i => $("slot"+i).addEventListener("click", e => { e.stopPropagation(); switchTo(i); }));
+$("interact").addEventListener("click", e => { e.stopPropagation(); tryOpenCrate(); });
+
+if (isTouch) {
+  // Minecraft-style d-pad: slide your finger between arrows; double-tap ▲ to sprint; center = jump
+  const dpad = $("dpad"), cells = {};
+  dpad.querySelectorAll(".dk[data-k]").forEach(c => cells[c.dataset.k] = c);
+  const DIRS = { u:[0,-1], d:[0,1], l:[-1,0], r:[1,0], ul:[-0.71,-0.71], ur:[0.71,-0.71] };
+  const GRID = [["ul","u","ur"],["l","c","r"],[null,"d",null]];
+  let did = null, cur = null, lastFwdUp = 0;
+  const keyAt = (x, y) => {
+    const r = dpad.getBoundingClientRect();
+    const cx = Math.floor((x - r.left) / (r.width/3)), cy = Math.floor((y - r.top) / (r.height/3));
+    if (cx < 0 || cx > 2 || cy < 0 || cy > 2) return null;
+    const k = GRID[cy][cx];
+    if ((k === "ul" || k === "ur") && !(cur === "u" || cur === "ul" || cur === "ur")) return null;
+    return k;
+  };
+  const setKey = (k, fresh) => {
+    if (k === cur) return;
+    if (cur && cells[cur]) cells[cur].classList.remove("on");
+    if (k === "u" && fresh && performance.now() - lastFwdUp < 320) touch.sprint = true;
+    if (k === "c") jump();
+    cur = k;
+    if (k && cells[k]) cells[k].classList.add("on");
+    const d = DIRS[k];
+    if (d) { touch.mx = d[0]; touch.mz = d[1]; } else if (k !== "c") { touch.mx = touch.mz = 0; }
+    if (!(k === "u" || k === "ul" || k === "ur")) touch.sprint = false;
+    dpad.classList.toggle("fwd", k === "u" || k === "ul" || k === "ur");
+  };
+  dpad.addEventListener("pointerdown", e => { if (did !== null) return; did = e.pointerId; dpad.setPointerCapture(e.pointerId); setKey(keyAt(e.clientX, e.clientY), true); });
+  dpad.addEventListener("pointermove", e => { if (e.pointerId === did) setKey(keyAt(e.clientX, e.clientY), false); });
+  const endPad = e => {
+    if (e.pointerId !== did) return;
+    if (cur === "u" || cur === "ul" || cur === "ur") lastFwdUp = performance.now();
+    did = null; setKey(null, false); touch.mx = touch.mz = 0; touch.sprint = false;
+  };
+  dpad.addEventListener("pointerup", endPad); dpad.addEventListener("pointercancel", endPad);
+
+  const fb = $("fireBtn");
+  let fx = 0, fy = 0, fid = null;
+  fb.addEventListener("pointerdown", e => { touch.fire = true; fid = e.pointerId; fx = e.clientX; fy = e.clientY; fb.classList.add("on"); fb.setPointerCapture(e.pointerId); });
+  const endFire = e => { if (e.pointerId !== fid) return; touch.fire = false; semiLatch = false; fid = null; fb.classList.remove("on"); };
+  fb.addEventListener("pointerup", endFire); fb.addEventListener("pointercancel", endFire);
+  fb.addEventListener("pointermove", e => { if (e.pointerId !== fid) return; look(e.clientX - fx, e.clientY - fy, 0.006); fx = e.clientX; fy = e.clientY; });
+  $("reloadBtn").addEventListener("pointerdown", () => startReload());
+  $("scopeBtn").addEventListener("pointerdown", () => setAim(!aiming));
+  $("grenBtn").addEventListener("pointerdown", () => throwGrenade());
+  canvas.addEventListener("pointerdown", e => {
+    if (game.state !== "play" || touch.lookId !== null) return;
+    if (e.clientX < innerWidth*0.4) return;
+    touch.lookId = e.pointerId; touch.lx = e.clientX; touch.ly = e.clientY;
+  });
+  canvas.addEventListener("pointermove", e => {
+    if (e.pointerId !== touch.lookId) return;
+    look(e.clientX - touch.lx, e.clientY - touch.ly, 0.006);
+    touch.lx = e.clientX; touch.ly = e.clientY;
+  });
+  const endLook = e => { if (e.pointerId === touch.lookId) touch.lookId = null; };
+  canvas.addEventListener("pointerup", endLook); canvas.addEventListener("pointercancel", endLook);
+  const portrait = matchMedia("(orientation: portrait)");
+  const checkRot = () => {
+    const p = portrait.matches;
+    $("rotate").hidden = !(p && (game.state === "play" || game.state === "pause"));
+    if (p && game.state === "play") pauseGame();
+  };
+  portrait.addEventListener ? portrait.addEventListener("change", checkRot) : portrait.addListener(checkRot);
+  window.__checkRot = checkRot;
+}
+
+/* ---------- game state ---------- */
+const game = { state: "menu", stage: 1, stageTime: 0, stageDur: 30, spawnT: 0, kills: 0, score: 0, time: 0, quota: [], drops: [],
+  zone: { x: 0, z: 0, r0: 55, r1: 30, r: 55 } };
+
+function stageParams(n){
+  return { dur: 30 + 5*Math.min(n, 6), interval: Math.max(0.22, 1.5 - n*0.14), maxAlive: 8 + n*4, zoneDps: 4 + 2.5*n };
+}
+function setupZone(n){
+  const r0 = Math.max(12, 56 - (n-1)*6), r1 = Math.max(7, r0*0.55);
+  const lim = HALF - r1 - 2, z = game.zone;
+  const a = Math.random()*Math.PI*2, d = Math.random()*Math.min(10, r0*0.3);
+  z.x = Math.max(-lim, Math.min(lim, (n === 1 ? 0 : z.x) + Math.cos(a)*d));
+  z.z = Math.max(-lim, Math.min(lim, (n === 1 ? 0 : z.z) + Math.sin(a)*d));
+  z.r0 = r0; z.r1 = r1; z.r = r0;
+}
+function buildQuota(n, dur){
+  const list = [{ t: 4, type: "boss" }];
+  const add = (type, count) => { for (let i = 0; i < count; i++) list.push({ t: 3 + (dur*0.75 - 3)*(i+0.5)/count + Math.random()*1.5, type }); };
+  add("brute", n); add("runner", n);
+  return list.sort((a, b) => a.t - b.t);
+}
+
+function clearWorldObjects(){
+  for (const e of [...enemies]) removeEnemy(e);
+  for (const s of shots) scene.remove(s.m); shots.length = 0;
+  for (const p of pickups) scene.remove(p.m); pickups.length = 0;
+  for (const g of grenades) { scene.remove(g.m); scene.remove(g.ring); } grenades.length = 0;
+}
+function resetRun(){
+  clearWorldObjects();
+  for (const c of crates) scene.remove(c.g); crates.length = 0;
+  Object.assign(player, { hp: 100, maxHp: 100, speed: 6, regen: 0, vy: 0, yaw: 0, pitch: 0.15, alive: true, reload: 0,
+    dmgMul: 1, rateMul: 1, magMul: 1, reloadMul: 1, slots: [{ id: "pistol", ammo: WEAPONS.pistol.mag }, null], cur: 0, grenades: 2 });
+  player.pos.set(0, 0, 0); clearAim(); applyGunLook();
+  game.stage = 1; game.kills = 0; game.score = 0; game.time = 0;
+  startStage();
+}
+function startStage(){
+  const P = stageParams(game.stage);
+  game.stageDur = P.dur; game.stageTime = 0; game.spawnT = 0;
+  game.quota = buildQuota(game.stage, P.dur);
+  game.drops = game.stage === 1 ? [10] : [8, P.dur*0.55];
+  setupZone(game.stage);
+  banner(`STAGE ${game.stage}`, `${P.dur}초 동안 살아남으세요 · 보스 출현`);
+  sfx("stage");
+}
+
+function show(id){
+  for (const o of ["menu","pause","upgrade","over"]) $(o).hidden = o !== id;
+  if (id === "menu" || id === "pause") $(id + "Set").append($("settings"));
+}
+function applySettings(save){
+  $("touch").style.setProperty("--ui", SET.ui);
+  $("sens").value = SET.sens; $("sensVal").textContent = Number(SET.sens).toFixed(1);
+  $("autoFire").checked = !!SET.autoFire; $("aimAssist").checked = !!SET.assist;
+  $("uiSeg").querySelectorAll("button").forEach(b => b.classList.toggle("on", Number(b.dataset.v) === Number(SET.ui)));
+  if (save) ls.set("bs-set", JSON.stringify(SET));
+}
+$("sens").addEventListener("input", e => { SET.sens = Number(e.target.value); applySettings(true); });
+$("uiSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; SET.ui = Number(b.dataset.v); applySettings(true); });
+$("autoFire").addEventListener("change", e => { SET.autoFire = e.target.checked; applySettings(true); });
+$("aimAssist").addEventListener("change", e => { SET.assist = e.target.checked; applySettings(true); });
+const fsEl = document.documentElement;
+const fsReq = fsEl.requestFullscreen || fsEl.webkitRequestFullscreen;
+if (!fsReq) $("fsBtn").hidden = true;
+$("fsBtn").addEventListener("click", () => {
+  const cur = document.fullscreenElement || document.webkitFullscreenElement;
+  try {
+    if (cur) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    const p = fsReq.call(fsEl); if (p && p.catch) p.catch(() => { $("fsBtn").textContent = "이 화면에서는 전체화면이 안 돼요"; });
+  } catch(e) { $("fsBtn").textContent = "이 화면에서는 전체화면이 안 돼요"; }
+});
+document.addEventListener("fullscreenchange", () => { $("fsBtn").textContent = document.fullscreenElement ? "전체화면 끄기" : "전체화면으로 하기"; });
+$("pauseBtn").addEventListener("click", e => { e.stopPropagation(); if (game.state === "play") { if (document.exitPointerLock && locked) { hadLock = false; document.exitPointerLock(); } pauseGame(); } });
+function enterPlay(){
+  show(null); $("hud").hidden = false; $("cross").hidden = false; $("touch").hidden = !isTouch;
+  game.state = "play"; last = performance.now();
+  if (window.__checkRot) window.__checkRot();
+  if (!isTouch && canvas.requestPointerLock) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(()=>{}); } catch(e){} }
+}
+function pauseGame(){ game.state = "pause"; mouseDown = false; setAim(false); $("interact").hidden = true; $("interact").dataset.k = ""; show("pause"); }
+function clearAim(){ setAim(false); aimT = 0; recoilOff = 0; bloom = 0; }
+
+$("startBtn").addEventListener("click", () => {
+  const n = $("nick").value.trim();
+  if (!n) { $("nick").focus(); $("nick").placeholder = "닉네임을 먼저 입력해 주세요"; return; }
+  ls.set("bs-nick", n);
+  initAudio(); resetRun(); enterPlay();
+});
+$("nick").addEventListener("keydown", e => { if (e.key === "Enter") $("startBtn").click(); });
+$("resumeBtn").addEventListener("click", () => { if (isTouch && matchMedia("(orientation: portrait)").matches) { $("rotate").hidden = false; return; } initAudio(); enterPlay(); });
+$("rotate").addEventListener("click", () => { if (!matchMedia("(orientation: portrait)").matches) $("rotate").hidden = true; });
+$("quitBtn").addEventListener("click", () => gameOver(true));
+$("againBtn").addEventListener("click", () => { initAudio(); resetRun(); enterPlay(); });
+$("toMenuBtn").addEventListener("click", () => { show("menu"); game.state = "menu"; });
+
+/* ---------- weapons: give / switch ---------- */
+function giveWeapon(id){
+  const w = WEAPONS[id];
+  const have = player.slots.findIndex(s => s && s.id === id);
+  if (have >= 0) { player.slots[have].ammo = magOf(w); switchTo(have, true); return `${w.name} 탄약 보충`; }
+  const empty = player.slots.findIndex(s => !s);
+  if (empty >= 0) { player.slots[empty] = { id, ammo: magOf(w) }; switchTo(empty, true); return `${w.name} 획득`; }
+  const old = W().name;
+  player.slots[player.cur] = { id, ammo: magOf(w) };
+  player.reload = 0; clearAim(); applyGunLook(); swapT = 0.35;
+  return `${w.name} 획득 (${old} 버림)`;
+}
+function switchTo(i, force){
+  if (!player.slots[i] || (i === player.cur && !force)) return;
+  player.cur = i; player.reload = 0; setAim(false); swapT = 0.35; semiLatch = false;
+  applyGunLook(); sfx("swap");
+}
+
+/* ---------- upgrades ---------- */
+const UPGRADES = [
+  { tag:"화력", name:"강화 탄두", desc:"모든 총 피해 +20%", fn:() => player.dmgMul *= 1.2 },
+  { tag:"화력", name:"경량 노리쇠", desc:"모든 총 연사 속도 +18%", fn:() => player.rateMul *= 1.18 },
+  { tag:"화력", name:"확장 탄창", desc:"탄창 +30%, 장전 시간 -10%", fn:() => { player.magMul *= 1.3; player.reloadMul *= 0.9; } },
+  { tag:"생존", name:"방탄 조끼", desc:"최대 체력 +25, 체력 25 회복", fn:() => { player.maxHp += 25; player.hp = Math.min(player.maxHp, player.hp + 25); } },
+  { tag:"생존", name:"응급 키트", desc:"체력 전부 회복", fn:() => player.hp = player.maxHp },
+  { tag:"생존", name:"재생 패치", desc:"초당 체력 1.5 회복", fn:() => player.regen += 1.5 },
+  { tag:"기동", name:"러닝화", desc:"이동 속도 +12%", fn:() => player.speed *= 1.12 },
+  { tag:"폭발", name:"수류탄 벨트", desc:"수류탄 +2개", fn:() => player.grenades = Math.min(GREN_MAX, player.grenades + 2) },
+];
+const STAGE_WEAPON = { 1: ["shotgun", "근거리 9발 산탄 · 한 방이 강해요"], 3: ["mg", "탄창 60발 연사 · 반동이 커요"] };
+function slotNote(){ return player.slots.every(Boolean) ? ` · 들고 있는 ${W().name}과 교체` : " · 빈 칸에 장착"; }
+function showUpgrades(){
+  game.state = "upgrade"; mouseDown = false; clearAim(); $("interact").hidden = true;
+  if (document.exitPointerLock && locked) { hadLock = false; document.exitPointerLock(); }
+  const got = player.grenades < GREN_MAX;
+  player.grenades = Math.min(GREN_MAX, player.grenades + 1);
+  $("upEyebrow").textContent = `STAGE ${game.stage} 생존 성공 · +300점${got ? " · 수류탄 +1" : ""}`;
+  const pick = [...UPGRADES].sort(() => Math.random() - 0.5).slice(0, 3);
+  const sw = STAGE_WEAPON[game.stage];
+  if (sw && !player.slots.some(s => s && s.id === sw[0])) pick[0] = { weapon: true, tag:"새 무기", name: WEAPONS[sw[0]].name, desc: sw[1] + slotNote(), fn: () => toast(giveWeapon(sw[0])) };
+  const wrap = $("cards"); wrap.innerHTML = "";
+  pick.forEach(u => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "card" + (u.weapon ? " weapon" : "");
+    const t = document.createElement("span"); t.className = "tag"; t.textContent = u.tag;
+    const n = document.createElement("b"); n.textContent = u.name;
+    const d = document.createElement("span"); d.textContent = u.desc;
+    b.append(t, n, d);
+    b.addEventListener("click", () => {
+      u.fn();
+      for (const s of player.slots) if (s) s.ammo = magOf(WEAPONS[s.id]);
+      game.stage++; startStage(); enterPlay();
+    });
+    wrap.append(b);
+  });
+  show("upgrade");
+}
+
+/* ---------- shooting ---------- */
+const ray = new THREE.Raycaster();
+const tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
+function startReload(){ if (game.state === "play" && player.reload <= 0 && swapT <= 0 && S().ammo < magOf(W())) { player.reload = W().reload * player.reloadMul; sfx("click"); } }
+function fireRay(nx, ny, dmg, w){
+  ray.setFromCamera({ x: nx, y: ny }, camera);
+  ray.far = w.range || 120;
+  const hits = ray.intersectObjects(solidMeshes.concat(enemies.map(e => e.hb)), false);
+  const minD = camera.position.distanceTo(player.pos) - 0.5;
+  let end = null, hitAny = false; const seen = new Set();
+  for (const h of hits) {
+    if (h.distance < minD) continue;
+    const e = h.object.userData.enemy;
+    if (e) {
+      if (seen.has(e)) continue; seen.add(e);
+      const head = h.point.y - e.pos.y > 1.45*e.T.scale;
+      const fall = w.range ? Math.max(0.35, 1 - h.distance / w.range) : 1;
+      damageEnemy(e, dmg * fall * (head ? 1.8 : 1)); hitAny = true;
+      end = h.point;
+      if (!w.pierce) break;
+    } else { end = h.point; break; }
+  }
+  if (!end) end = ray.ray.at(ray.far, new THREE.Vector3());
+  return { end: end.clone(), hitAny };
+}
+function shoot(now, autoTrig){
+  const w = W(), s = S();
+  if (player.reload > 0 || swapT > 0) return;
+  if (!w.auto && semiLatch && !autoTrig) return;
+  if (s.ammo <= 0) { startReload(); return; }
+  if (now - player.lastShot < 1000/(w.rate*player.rateMul)) return;
+  player.lastShot = now; s.ammo--; if (!autoTrig) semiLatch = true;
+  const scoped = aiming && w.scope > 0;
+  const moving = Math.abs(touch.mx) + Math.abs(touch.mz) > 0.1 || keys.KeyW || keys.KeyA || keys.KeyS || keys.KeyD;
+  const spread = (scoped ? w.spread*0.15 : w.spread) + (moving ? (scoped ? 0.004 : 0.012) : 0) + bloom*(scoped ? 0.4 : 1) + (player.onGround ? 0 : 0.04);
+  muzzle.getWorldPosition(tmpV);
+  let anyHit = false;
+  for (let i = 0; i < w.pellets; i++) {
+    const a = Math.random()*Math.PI*2, r = (w.pellets > 1 ? Math.sqrt(Math.random()) : (Math.random()-0.5)) * spread;
+    const res = fireRay(Math.cos(a)*r, Math.sin(a)*r, w.dmg * player.dmgMul, w);
+    if (i < 4) addTracer(tmpV.clone(), res.end);
+    anyHit = anyHit || res.hitAny;
+  }
+  if (anyHit) { const cr = $("cross"); cr.classList.add("hit"); setTimeout(() => cr.classList.remove("hit"), 90); sfx("hit"); }
+  const kick = w.kick * (scoped ? 0.55 : 1) * (0.85 + Math.random()*0.3);
+  player.pitch = Math.max(-0.55, player.pitch - kick*0.55);
+  recoilOff = Math.min(0.22, recoilOff + kick*0.45);
+  player.yaw += (Math.random() - 0.5) * (scoped ? 0.006 : 0.014) * (w.kick / 0.02);
+  bloom = Math.min(0.06, bloom + 0.007);
+  gunKick = 0.14; buzz(w.pellets > 1 || w.scope >= 5 ? 30 : 12);
+  flash.visible = true; setTimeout(() => flash.visible = false, 40);
+  tone(w.snd);
+  if (s.ammo <= 0) startReload();
+}
+let sightT = 0, sightHit = false;
+function enemyInSights(now){
+  if (now - sightT < 80) return sightHit;
+  sightT = now;
+  ray.setFromCamera({ x: 0, y: 0 }, camera); ray.far = W().range || 70;
+  const hits = ray.intersectObjects(solidMeshes.concat(enemies.map(e => e.hb)), false);
+  const minD = camera.position.distanceTo(player.pos) - 0.5;
+  sightHit = false;
+  for (const h of hits) { if (h.distance < minD) continue; sightHit = !!h.object.userData.enemy; break; }
+  return sightHit;
+}
+function aimAssist(dt){
+  let best = null, bestA = 0.14;
+  const cp = camera.position;
+  for (const e of enemies) {
+    const tx = e.pos.x - cp.x, ty = e.pos.y + 1.1*e.T.scale - cp.y, tz = e.pos.z - cp.z, L = Math.hypot(tx, ty, tz);
+    if (L < 1.5 || L > 45) continue;
+    const a = Math.acos(Math.min(1, (tx*camDir.x + ty*camDir.y + tz*camDir.z) / L));
+    if (a < bestA) { bestA = a; best = { tx, ty, tz, L }; }
+  }
+  if (!best) return;
+  let dYaw = Math.atan2(-best.tx, -best.tz) - player.yaw; dYaw = Math.atan2(Math.sin(dYaw), Math.cos(dYaw));
+  const dP = (-Math.asin(best.ty / best.L) + recoilOff) - player.pitch;
+  const k = Math.min(1, 3.2*dt);
+  player.yaw += dYaw*k;
+  player.pitch = Math.max(-0.55, Math.min(0.85, player.pitch + dP*k));
+}
+function damageEnemy(e, d){
+  if (e.dead) return;
+  e.hp -= d; e.flash = 0.08;
+  if (e.hp <= 0) killEnemy(e);
+}
+const tracerMat = new THREE.LineBasicMaterial({ color: 0xffe28a, transparent: true });
+function addTracer(a, b){
+  const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), tracerMat.clone()); scene.add(l);
+  tracers.push({ l, t: 0.07 });
+}
+function killEnemy(e){
+  if (e.dead) return; e.dead = true;
+  game.kills++; game.score += e.T.score;
+  sfx("kill");
+  if (e.T.boss) { spawnCrate(e.pos.x, e.pos.z, false); toast("보스 처치! 보급 상자가 떨어졌어요"); puff(e.pos, e.T.col.body, 14); }
+  else if (Math.random() < 0.09) spawnPickup(e.pos.x, e.pos.z);
+  puff(e.pos, e.T.col.body);
+  removeEnemy(e);
+}
+function puff(pos, col, n = 6){
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.25,0.25,0.25), new THREE.MeshLambertMaterial({ color: col }));
+    m.position.set(pos.x, 1 + Math.random(), pos.z); scene.add(m);
+    puffs.push({ m, v: new THREE.Vector3((Math.random()-0.5)*5, 3+Math.random()*3, (Math.random()-0.5)*5), t: 0.7 });
+  }
+}
+function spawnPickup(x, z){
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.6,0.6), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+  const c1 = new THREE.Mesh(new THREE.BoxGeometry(0.62,0.14,0.36), new THREE.MeshBasicMaterial({ color: 0xe23b3b }));
+  const c2 = new THREE.Mesh(new THREE.BoxGeometry(0.62,0.36,0.14), new THREE.MeshBasicMaterial({ color: 0xe23b3b }));
+  g.add(b, c1, c2); g.position.set(x, 0.6, z); scene.add(g);
+  pickups.push({ m: g, t: 20 });
+}
+
+/* ---------- grenades ---------- */
+const grenMat = new THREE.MeshLambertMaterial({ color: 0x3f5a2c });
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xff5a4f, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
+const ringGeo = new THREE.RingGeometry(GREN_R - 0.35, GREN_R, 48);
+function throwGrenade(){
+  if (game.state !== "play" || grenCd > 0) return;
+  if (player.grenades <= 0) { toast("수류탄이 없어요 · 레벨업이나 보급 상자로 채워요"); return; }
+  player.grenades--; grenCd = 0.6;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.28,0.34,0.28), grenMat);
+  m.position.copy(player.pos).add(new THREE.Vector3(0, 1.6, 0)).addScaledVector(camDir, 0.7);
+  scene.add(m);
+  const ring = new THREE.Mesh(ringGeo, ringMat.clone()); ring.rotation.x = -Math.PI/2; ring.position.y = 0.06; scene.add(ring);
+  const v = camDir.clone().multiplyScalar(16); v.y += 4.5;
+  grenades.push({ m, ring, v, t: 2.2 });
+  sfx("swap");
+}
+function explode(p){
+  boomSound(); buzz(160); shakeT = 0.35;
+  const bm = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffa23a, transparent: true, opacity: 0.85, depthWrite: false }));
+  bm.position.copy(p); scene.add(bm); blasts.push({ m: bm, t: 0 });
+  puff(p, 0x444444, 10); puff(p, 0xff8a2a, 6);
+  for (const e of [...enemies]) {
+    const d = Math.hypot(e.pos.x - p.x, e.pos.z - p.z) - e.r*0.5;
+    if (d < GREN_R) damageEnemy(e, 260 * player.dmgMul * (1 - 0.6*Math.max(0, d)/GREN_R));
+  }
+  const dp = Math.hypot(player.pos.x - p.x, player.pos.z - p.z);
+  if (dp < GREN_R && Math.abs(player.pos.y - p.y) < 4) { hurt(75 * (1 - 0.6*dp/GREN_R)); toast("내 수류탄에 맞았어요!"); }
+}
+
+/* ---------- supply crates ---------- */
+const supplyStripe = new THREE.MeshBasicMaterial({ color: 0xffcf4a });
+const chuteMat = new THREE.MeshLambertMaterial({ color: 0xe8553f, side: THREE.DoubleSide });
+const beamMat = new THREE.MeshBasicMaterial({ color: 0xffcf4a, transparent: true, opacity: 0.3, depthWrite: false });
+function spawnCrate(x, z, fromSky){
+  if (x === undefined) {
+    const Z = game.zone; let ok = false;
+    for (let t = 0; t < 20 && !ok; t++) {
+      const a = Math.random()*Math.PI*2, d = Math.random()*Z.r1*0.75;
+      x = Z.x + Math.cos(a)*d; z = Z.z + Math.sin(a)*d;
+      ok = Math.abs(x) < HALF-3 && Math.abs(z) < HALF-3 && !overlapsAny(x, z, 1);
+    }
+    if (!ok) return;
+  }
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.2,1,1.2), MAT.supply); body.position.y = 0.5; body.castShadow = true;
+  const s1 = new THREE.Mesh(new THREE.BoxGeometry(1.24,0.16,1.24), supplyStripe); s1.position.y = 0.55;
+  const s2 = new THREE.Mesh(new THREE.BoxGeometry(0.16,1.04,1.24), supplyStripe); s2.position.y = 0.5;
+  const chute = new THREE.Mesh(new THREE.ConeGeometry(1.8, 1.1, 8, 1, true), chuteMat); chute.position.y = 3.6;
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 40, 6, 1, true), beamMat); beam.position.y = 20;
+  g.add(body, s1, s2, chute, beam);
+  g.position.set(x, fromSky ? 32 : 0, z); scene.add(g);
+  crates.push({ g, chute, landed: !fromSky });
+  chute.visible = !!fromSky;
+  if (fromSky) toast("보급 상자가 떨어지고 있어요 · 노란 빛기둥을 찾아요");
+}
+let nearCrate = null;
+function tryOpenCrate(){
+  if (game.state !== "play" || !nearCrate) return;
+  const c = nearCrate; nearCrate = null;
+  scene.remove(c.g); crates.splice(crates.indexOf(c), 1);
+  const owned = new Set(player.slots.filter(Boolean).map(s => s.id));
+  let pool = CRATE_POOL.filter(([id]) => !owned.has(id)); if (!pool.length) pool = CRATE_POOL;
+  let tot = pool.reduce((a, b) => a + b[1], 0), r = Math.random()*tot, id = pool[0][0];
+  for (const [k, wgt] of pool) { r -= wgt; if (r <= 0) { id = k; break; } }
+  const msg = giveWeapon(id);
+  player.grenades = Math.min(GREN_MAX, player.grenades + 1);
+  player.hp = Math.min(player.maxHp, player.hp + 25);
+  toast(`보급: ${msg} · 수류탄 +1 · 체력 +25`);
+  sfx("pick"); puff(c.g.position, 0xffcf4a, 8);
+}
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function hurt(d){
+  if (!player.alive) return;
+  player.hp -= d; player.hurtT = 0.35; sfx("hurt"); buzz(60);
+  if (player.hp <= 0) { player.hp = 0; gameOver(false); }
+}
+function update(dt, now){
+  game.time += dt; game.stageTime += dt;
+  const P = stageParams(game.stage);
+  if (swapT > 0) swapT -= dt;
+  if (grenCd > 0) grenCd -= dt;
+
+  let mx = 0, mz = 0;
+  if (keys.KeyW || keys.ArrowUp) mz -= 1; if (keys.KeyS || keys.ArrowDown) mz += 1;
+  if (keys.KeyA || keys.ArrowLeft) mx -= 1; if (keys.KeyD || keys.ArrowRight) mx += 1;
+  mx += touch.mx; mz += touch.mz;
+  const len = Math.hypot(mx, mz); if (len > 1) { mx /= len; mz /= len; }
+  const sprint = !aiming && (keys.ShiftLeft || keys.ShiftRight || touch.sprint) && mz < 0;
+  const sp = player.speed * (sprint ? 1.45 : 1) * (aiming ? 0.6 : 1);
+  bloom = Math.max(0, bloom - 0.09*dt);
+  recoilOff = Math.max(0, recoilOff - recoilOff*10*dt - 0.02*dt);
+  gunKick = Math.max(0, gunKick - 1.2*dt);
+  gun.position.z = -0.28 + gunKick;
+  aimT += ((aiming ? 1 : 0) - aimT) * Math.min(1, dt*14);
+  const sy = Math.sin(player.yaw), cy = Math.cos(player.yaw);
+  player.pos.x += (mx*cy + mz*sy) * sp * dt;
+  player.pos.z += (-mx*sy + mz*cy) * sp * dt;
+  resolve(player.pos, 0.4);
+  player.vy -= 20*dt; player.pos.y += player.vy*dt;
+  const gh = groundHeightAt(player.pos.x, player.pos.z, 0.3);
+  if (player.pos.y <= gh) { player.pos.y = gh; player.vy = 0; player.onGround = true; }
+  else if (player.pos.y > gh + 0.02) player.onGround = false;
+
+  if (player.regen) player.hp = Math.min(player.maxHp, player.hp + player.regen*dt);
+  if (player.reload > 0) { player.reload -= dt; if (player.reload <= 0) { player.reload = 0; S().ammo = magOf(W()); } }
+  if (mouseDown || touch.fire) shoot(now);
+  else if (isTouch && SET.autoFire && enemyInSights(now)) shoot(now, true);
+  if (isTouch && SET.assist) aimAssist(dt);
+
+  const moving = len > 0.1;
+  player.walk += dt * (moving ? sp*1.6 : 0);
+  const sw = moving ? Math.sin(player.walk)*0.7 : 0;
+  pm.legL.rotation.x = sw; pm.legR.rotation.x = -sw; pm.armL.rotation.x = -sw*0.6;
+  pm.armR.rotation.x = Math.PI/2 - 0.15 + player.pitch*0.6 - (swapT > 0 ? swapT*2 : 0);
+
+  // zone
+  const z = game.zone, f = Math.min(1, game.stageTime / (game.stageDur*0.8));
+  z.r = z.r0 + (z.r1 - z.r0) * f;
+  zoneMesh.position.x = zoneRing.position.x = z.x; zoneMesh.position.z = zoneRing.position.z = z.z;
+  zoneMesh.scale.set(z.r, 1, z.r); zoneRing.scale.set(z.r, z.r, 1);
+  const outside = Math.hypot(player.pos.x - z.x, player.pos.z - z.z) > z.r;
+  $("warn").hidden = !outside; $("zoneTint").style.opacity = outside ? 1 : 0;
+  if (outside) { player.hp -= P.zoneDps*dt; if (player.hp <= 0) { player.hp = 0; gameOver(false); return; } }
+
+  // spawning: quota (boss, brutes, runners) + regular trickle
+  while (game.quota.length && game.stageTime >= game.quota[0].t) {
+    const q = game.quota.shift();
+    if (!spawnEnemy(q.type)) { q.t = game.stageTime + 0.5; game.quota.push(q); game.quota.sort((a, b) => a.t - b.t); break; }
+  }
+  game.spawnT -= dt;
+  if (game.spawnT <= 0 && enemies.length < P.maxAlive) { spawnEnemy(); game.spawnT = P.interval * (0.7 + Math.random()*0.6); }
+  while (game.drops.length && game.stageTime >= game.drops[0]) { game.drops.shift(); spawnCrate(undefined, undefined, true); }
+
+  // enemies
+  for (const e of [...enemies]) {
+    if (e.dead) continue;
+    const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z, d = Math.hypot(dx, dz) || 1;
+    let want = 1, mvx = dx/d, mvz = dz/d, spd = e.speed;
+    if (e.T.ranged) { want = d > 13 ? 1 : d < 9 ? -0.6 : 0; e.shootCd -= dt; if (e.shootCd <= 0 && d < 26) { fireSpit(e, 0); e.shootCd = 2.2 + Math.random(); } }
+    if (e.T.boss) {
+      e.chargeCd -= dt;
+      if (e.state === "tele") { want = 0; e.stT -= dt; if (e.stT <= 0) { e.state = "charge"; e.stT = 1.1; e.cx = mvx; e.cz = mvz; } }
+      else if (e.state === "charge") { mvx = e.cx; mvz = e.cz; spd = e.speed*3.4; e.stT -= dt; if (e.stT <= 0) { e.state = null; e.chargeCd = 5 + Math.random()*2; } }
+      else if (e.chargeCd <= 0 && d < 28 && d > 4) { e.state = "tele"; e.stT = 0.8; }
+      if (game.stage >= 3) { e.shootCd -= dt; if (e.shootCd <= 0 && d < 30 && e.state !== "charge") { fireSpit(e, -0.25); fireSpit(e, 0); fireSpit(e, 0.25); e.shootCd = 3.5; } }
+    }
+    e.pos.x += mvx * spd * want * dt; e.pos.z += mvz * spd * want * dt;
+    if (Math.hypot(e.pos.x - z.x, e.pos.z - z.z) > z.r + 3 && !e.T.boss) e.hp -= P.zoneDps*0.5*dt;
+    resolve(e.pos, e.r);
+    e.m.g.rotation.y = Math.atan2(-dx, -dz);
+    e.walk += dt * spd * want * 1.8 / Math.max(1, e.T.scale*0.6);
+    const s = Math.sin(e.walk)*0.6;
+    e.m.legL.rotation.x = s; e.m.legR.rotation.x = -s;
+    e.m.armL.rotation.x = e.m.armR.rotation.x = Math.PI/2.4 + Math.sin(e.walk*0.5)*0.15;
+    e.cd -= dt;
+    if (d < 1.0 + e.r && e.cd <= 0 && Math.abs(player.pos.y - e.pos.y) < 1.6*e.T.scale) { hurt(e.T.dmg); e.cd = 0.9; if (!player.alive) return; }
+    if (e.flash > 0) e.flash -= dt;
+    e.m.head.material.emissive.setHex(e.flash > 0 ? 0xff4040 : e.state === "tele" ? (Math.floor(now/80) % 2 ? 0xff9a00 : 0x000000) : 0x000000);
+    if (e.hp <= 0) killEnemy(e);
+  }
+  for (let i = 0; i < enemies.length; i++) for (let j = i+1; j < enemies.length; j++) {
+    const a = enemies[i].pos, b = enemies[j].pos, dx = b.x - a.x, dz = b.z - a.z, d2 = dx*dx + dz*dz, r = enemies[i].r + enemies[j].r;
+    if (d2 < r*r && d2 > 1e-6) { const d = Math.sqrt(d2), p = (r-d)/d*0.5; a.x -= dx*p; a.z -= dz*p; b.x += dx*p; b.z += dz*p; }
+  }
+
+  for (const s of [...shots]) {
+    s.m.position.addScaledVector(s.v, dt); s.t -= dt;
+    const p = s.m.position;
+    const hitPlayer = Math.hypot(p.x - player.pos.x, p.z - player.pos.z) < 0.6 && p.y > player.pos.y && p.y < player.pos.y + 2;
+    if (hitPlayer) hurt(s.dmg);
+    if (hitPlayer || s.t <= 0 || insideSolid(p.x, p.y, p.z, 0.1)) { scene.remove(s.m); shots.splice(shots.indexOf(s), 1); }
+    if (!player.alive) return;
+  }
+
+  // grenades
+  for (const g of [...grenades]) {
+    g.v.y -= 20*dt;
+    const p = g.m.position, ox = p.x, oz = p.z;
+    p.addScaledVector(g.v, dt);
+    if (insideSolid(p.x, p.y, p.z, 0.15)) { p.x = ox; p.z = oz; g.v.x *= -0.4; g.v.z *= -0.4; }
+    const gh2 = groundHeightAt(p.x, p.z, 0.1) + 0.17;
+    if (p.y < gh2) { p.y = gh2; g.v.y = Math.abs(g.v.y) > 2 ? -g.v.y*0.35 : 0; g.v.x *= 0.6; g.v.z *= 0.6; }
+    g.m.rotation.x += dt*8; g.m.rotation.z += dt*5;
+    g.ring.position.x = p.x; g.ring.position.z = p.z; g.ring.position.y = groundHeightAt(p.x, p.z, 0.1) + 0.06;
+    g.ring.material.opacity = 0.25 + 0.25*Math.abs(Math.sin(now/90));
+    g.t -= dt;
+    if (g.t <= 0) { scene.remove(g.m); scene.remove(g.ring); grenades.splice(grenades.indexOf(g), 1); explode(p.clone()); if (!player.alive) return; }
+  }
+
+  // crates
+  nearCrate = null; let best = 2.6;
+  for (const c of crates) {
+    if (!c.landed) { c.g.position.y -= 5*dt; c.g.rotation.y += dt*0.5; if (c.g.position.y <= 0) { c.g.position.y = 0; c.landed = true; c.chute.visible = false; } continue; }
+    const d = Math.hypot(c.g.position.x - player.pos.x, c.g.position.z - player.pos.z);
+    if (d < best) { best = d; nearCrate = c; }
+  }
+  const it = $("interact");
+  const itKey = nearCrate ? (player.slots.every(Boolean) ? "full:" + W().name : "open") : "";
+  if (itKey === it.dataset.k) { it.hidden = !nearCrate; /* unchanged: keep the button stable so taps register */ }
+  else if (nearCrate) {
+    it.dataset.k = itKey;
+    it.innerHTML = "";
+    if (!isTouch) { const k = document.createElement("kbd"); k.textContent = "E"; it.append(k); }
+    it.append(isTouch ? "보급 상자 열기 (누르기)" : "보급 상자 열기");
+    if (player.slots.every(Boolean)) { const sm = document.createElement("small"); sm.textContent = `새 총이면 들고 있는 ${W().name}과 교체돼요`; it.append(sm); }
+    it.hidden = false;
+  } else { it.dataset.k = ""; it.hidden = true; }
+
+  for (const pk of [...pickups]) {
+    pk.m.rotation.y += dt*2; pk.m.position.y = 0.6 + Math.sin(now/300)*0.12; pk.t -= dt;
+    if (Math.hypot(pk.m.position.x - player.pos.x, pk.m.position.z - player.pos.z) < 1.2) { player.hp = Math.min(player.maxHp, player.hp + 30); sfx("pick"); pk.t = 0; }
+    if (pk.t <= 0) { scene.remove(pk.m); pickups.splice(pickups.indexOf(pk), 1); }
+  }
+
+  if (game.stageTime >= game.stageDur) {
+    game.score += 300;
+    for (const e of [...enemies]) puff(e.pos, e.T.col.body);
+    clearWorldObjects();
+    player.hp = Math.min(player.maxHp, player.hp + 15);
+    sfx("stage");
+    showUpgrades();
+  }
+}
+const spitMat = new THREE.MeshBasicMaterial({ color: 0x7dfcff });
+function fireSpit(e, ang){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.3), spitMat);
+  m.position.set(e.pos.x, 1.4*Math.min(e.T.scale, 1.6), e.pos.z); scene.add(m);
+  const v = new THREE.Vector3(player.pos.x - e.pos.x, (player.pos.y + 1.1) - m.position.y, player.pos.z - e.pos.z).normalize();
+  v.applyAxisAngle(new THREE.Vector3(0,1,0), ang).multiplyScalar(13);
+  shots.push({ m, v, t: 3, dmg: (e.T.boss ? 14 : e.T.dmg) * (1 + 0.1*(game.stage-1)) });
+}
+
+const camDir = new THREE.Vector3(0,0,-1), pivot = new THREE.Vector3(), camRay = new THREE.Raycaster();
+function updateCamera(){
+  const pitch = player.pitch - recoilOff;
+  const cp = Math.cos(pitch);
+  camDir.set(-Math.sin(player.yaw)*cp, -Math.sin(pitch), -Math.cos(player.yaw)*cp);
+  const right = tmpV.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+  pivot.copy(player.pos).add(new THREE.Vector3(0, 1.75, 0)).addScaledVector(right, 0.75 - 0.3*aimT);
+  let dist = 4.2 - 3.0*aimT;
+  const sc = Math.max(1, W().scope || 1);
+  const fov = 70 / (1 + (sc - 1)*aimT);
+  if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  const scoped = game.state === "play" && aimT > 0.7;
+  $("scope").style.opacity = scoped ? 1 : 0;
+  $("cross").style.opacity = scoped ? 0 : 1;
+  pm.g.visible = aimT < 0.85;
+  camRay.set(pivot, camDir.clone().negate()); camRay.far = dist;
+  const h = camRay.intersectObjects(solidMeshes, false)[0];
+  if (h) dist = Math.max(0.6, h.distance - 0.25);
+  camera.position.copy(pivot).addScaledVector(camDir, -dist);
+  if (shakeT > 0) { const k = shakeT*0.6; camera.position.x += (Math.random()-0.5)*k; camera.position.y += (Math.random()-0.5)*k; }
+  camera.lookAt(tmpV2.copy(pivot).addScaledVector(camDir, 20));
+  sun.position.set(player.pos.x + 20, 40, player.pos.z + 10);
+  sun.target.position.copy(player.pos);
+}
+
+const rctx = $("radar").getContext("2d");
+function drawRadar(){
+  const Wd = 240, R = 118, scale = R / 40;
+  rctx.clearRect(0, 0, Wd, Wd);
+  rctx.save(); rctx.translate(Wd/2, Wd/2);
+  rctx.beginPath(); rctx.arc(0, 0, R, 0, Math.PI*2); rctx.clip();
+  rctx.rotate(player.yaw);
+  const rel = (x, z) => [(x - player.pos.x)*scale, (z - player.pos.z)*scale];
+  const [zx, zz] = rel(game.zone.x, game.zone.z);
+  rctx.strokeStyle = "#4fb3ff"; rctx.lineWidth = 4;
+  rctx.beginPath(); rctx.arc(zx, zz, game.zone.r*scale, 0, Math.PI*2); rctx.stroke();
+  for (const e of enemies) { const [x, z] = rel(e.pos.x, e.pos.z); const s = e.T.boss ? 9 : 4; rctx.fillStyle = e.T.boss ? "#ff2a6a" : "#ff5a4f"; rctx.fillRect(x-s, z-s, s*2, s*2); }
+  rctx.fillStyle = "#ffffff";
+  for (const p of pickups) { const [x, z] = rel(p.m.position.x, p.m.position.z); rctx.fillRect(x-4, z-4, 8, 8); }
+  rctx.fillStyle = "#ffcf4a";
+  for (const c of crates) {
+    let [x, z] = rel(c.g.position.x, c.g.position.z);
+    const dd = Math.hypot(x, z); if (dd > R - 10) { x *= (R-10)/dd; z *= (R-10)/dd; }
+    rctx.fillRect(x-6, z-6, 12, 12);
+  }
+  rctx.restore();
+  rctx.fillStyle = "#ffcf4a";
+  rctx.beginPath(); rctx.moveTo(Wd/2, Wd/2-12); rctx.lineTo(Wd/2-8, Wd/2+8); rctx.lineTo(Wd/2+8, Wd/2+8); rctx.closePath(); rctx.fill();
+}
+
+function updateHud(){
+  $("hStage").textContent = `STAGE ${game.stage}`;
+  $("hTimer").textContent = `생존까지 ${Math.max(0, game.stageDur - game.stageTime).toFixed(1)}초`;
+  $("hKills").textContent = game.kills;
+  $("hScore").textContent = currentScore();
+  $("hHp").textContent = `${Math.ceil(player.hp)} / ${Math.round(player.maxHp)}`;
+  const pct = player.hp / player.maxHp;
+  const bar = $("hHpBar"); bar.style.width = (pct*100) + "%"; bar.style.background = pct < 0.3 ? "var(--danger)" : "var(--hp)";
+  $("hAmmo").textContent = player.reload > 0 ? "··" : String(S().ammo);
+  $("hMag").textContent = ` / ${magOf(W())}`;
+  $("hGren").textContent = player.grenades;
+  $("hReload").textContent = player.reload > 0 ? `재장전 ${player.reload.toFixed(1)}초` : (S().ammo === 0 ? "R 재장전" : "");
+  for (let i = 0; i < 2; i++) {
+    const el = $("slot"+i), s = player.slots[i];
+    el.classList.toggle("cur", i === player.cur); el.classList.toggle("empty", !s);
+    const nm = s ? WEAPONS[s.id].name + (WEAPONS[s.id].scope ? " ◎" : "") : "비어 있음";
+    if (el.lastChild.textContent !== nm) el.lastChild.textContent = nm;
+  }
+  $("scopeBtn").hidden = !(W().scope > 0);
+  const boss = enemies.find(e => e.T.boss);
+  $("bossWrap").hidden = !boss;
+  if (boss) { $("bossName").textContent = `${boss.T.name} Lv.${game.stage}`; $("bossBar").style.width = Math.max(0, boss.hp/boss.maxHp*100) + "%"; }
+  $("vignette").style.opacity = player.hurtT > 0 ? 0.55 : (pct < 0.3 ? 0.25 : 0);
+}
+function currentScore(){ return Math.floor(game.score + game.time); }
+
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (game.state === "play") {
+    update(dt, now);
+    if (player.hurtT > 0) player.hurtT -= dt;
+    if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) $("banner").style.opacity = 0; }
+    if (game.state === "play") { updateHud(); drawRadar(); }
+  } else if (game.state === "menu") {
+    player.yaw += dt*0.12;
+  }
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("toast").style.opacity = 0; }
+  if (shakeT > 0) shakeT -= dt;
+  for (const t of [...tracers]) { t.t -= dt; t.l.material.opacity = Math.max(0, t.t/0.07); if (t.t <= 0) { scene.remove(t.l); t.l.geometry.dispose(); tracers.splice(tracers.indexOf(t), 1); } }
+  for (const p of [...puffs]) { p.t -= dt; p.v.y -= 14*dt; p.m.position.addScaledVector(p.v, dt); p.m.scale.setScalar(Math.max(0.01, p.t/0.7)); if (p.t <= 0) { scene.remove(p.m); puffs.splice(puffs.indexOf(p), 1); } }
+  for (const b of [...blasts]) { b.t += dt; const k = Math.min(1, b.t/0.35); b.m.scale.setScalar(0.5 + (GREN_R - 0.5)*k); b.m.material.opacity = 0.85*(1-k); if (k >= 1) { scene.remove(b.m); blasts.splice(blasts.indexOf(b), 1); } }
+  pm.g.position.copy(player.pos); pm.g.rotation.y = player.yaw;
+  updateCamera();
+  renderer.render(scene, camera);
+}
+applyGunLook(); applySettings(false); show("menu");
+requestAnimationFrame(frame);
+
+/* ---------- ranking (Firebase) ---------- */
+const FIREBASE_CONFIG = {
+  "apiKey": "AIzaSyAC4RYeuGGmHV5Z4YF7oR6rHj2MBzwIhX0",
+  "authDomain": "hong-ppukyou.firebaseapp.com",
+  "projectId": "hong-ppukyou",
+  "storageBucket": "hong-ppukyou.firebasestorage.app",
+  "messagingSenderId": "746503793715",
+  "appId": "1:746503793715:web:5e40ad6dd0e8cea2928746"
+};
+let fs = null, uid = null, myBest = null;
+const rankLists = [$("rankMenu"), $("rankOver")];
+const rankMsgs = [$("rankMsgMenu"), $("rankMsgOver")];
+let lastRows = [];
+function renderRank(rows, msg){
+  lastRows = rows;
+  rankLists.forEach(ol => {
+    ol.innerHTML = "";
+    rows.forEach((r, i) => {
+      const li = document.createElement("li"); if (r.id === uid) li.className = "me";
+      const no = document.createElement("span"); no.className = "no"; no.textContent = i + 1;
+      const nk = document.createElement("span"); nk.className = "nick"; nk.textContent = r.nick || "이름 없음";
+      const st = document.createElement("span"); st.className = "st"; st.textContent = `ST ${r.stage}`;
+      const sc = document.createElement("span"); sc.className = "sc"; sc.textContent = Number(r.score).toLocaleString("ko-KR");
+      li.append(no, nk, st, sc); ol.append(li);
+    });
+  });
+  rankMsgs.forEach(m => m.textContent = msg !== undefined ? msg : (rows.length ? "" : "아직 기록이 없어요. 첫 번째 생존자가 되어 보세요."));
+}
+renderRank([], "랭킹을 불러오는 중…");
+(async () => {
+  if (!FIREBASE_CONFIG.apiKey || !window.firebase) { renderRank([], "랭킹 서버가 아직 연결되지 않았어요. 게임은 그대로 즐길 수 있어요."); return; }
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fs = firebase.firestore();
+    try { const cred = await firebase.auth().signInAnonymously(); uid = cred.user.uid; } catch(e) { console.warn("auth", e); }
+    let loaded = false;
+    const timer = setTimeout(() => { if (!loaded) rankMsgs.forEach(m => m.textContent = "랭킹 서버에 연결 중이에요. 인터넷 연결을 확인해 주세요."); }, 10000);
+    fs.collection("scores").orderBy("score", "desc").limit(20).onSnapshot(snap => {
+      loaded = true; clearTimeout(timer);
+      const rows = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      const mine = rows.find(r => r.id === uid); if (mine) myBest = mine.score;
+      renderRank(rows);
+    }, err => { loaded = true; clearTimeout(timer); console.warn(err); renderRank(lastRows, "랭킹을 불러오지 못했어요. 잠시 후 새로고침해 주세요."); });
+    if (uid) { try { const s = await fs.collection("scores").doc(uid).get(); if (s.exists) myBest = s.data().score; } catch(e){} }
+  } catch(e) { console.warn(e); renderRank([], "랭킹 서버에 연결하지 못했어요."); }
+})();
+async function saveScore(stats){
+  const msg = $("saveMsg");
+  if (!fs || !uid) { msg.textContent = "랭킹 서버에 연결되지 않아 이번 기록은 저장되지 않았어요."; msg.style.color = "var(--muted)"; return; }
+  if (myBest !== null && stats.score <= myBest) { msg.textContent = `내 최고 기록 ${myBest.toLocaleString("ko-KR")}점은 그대로예요.`; msg.style.color = "var(--muted)"; return; }
+  msg.textContent = "랭킹에 저장하는 중…"; msg.style.color = "var(--muted)";
+  try {
+    await fs.collection("scores").doc(uid).set({ nick: stats.nick, score: Math.floor(stats.score), stage: Math.floor(stats.stage), kills: Math.floor(stats.kills), time: Math.floor(stats.time), at: new Date().toISOString() });
+    myBest = stats.score;
+    msg.textContent = "최고 기록 갱신! 랭킹에 저장했어요."; msg.style.color = "var(--gold)";
+  } catch(e) { console.warn(e); msg.textContent = "저장하지 못했어요. 인터넷 연결을 확인하고 다시 도전해 주세요."; msg.style.color = "var(--danger)"; }
+}
+
+function gameOver(gaveUp){
+  if (!player.alive) return;
+  player.alive = false; game.state = "over"; mouseDown = false; touch.fire = false; clearAim();
+  if (document.exitPointerLock && locked) { hadLock = false; document.exitPointerLock(); }
+  $("hud").hidden = true; $("cross").hidden = true; $("touch").hidden = true; $("warn").hidden = true; $("interact").hidden = true;
+  $("zoneTint").style.opacity = 0; $("vignette").style.opacity = 0; $("banner").style.opacity = 0;
+  const stats = { nick: (ls.get("bs-nick") || $("nick").value.trim() || "생존자").slice(0, 12), score: currentScore(), stage: game.stage, kills: game.kills, time: Math.floor(game.time) };
+  $("overTitle").textContent = gaveUp ? "작전 포기" : `STAGE ${game.stage}에서 탈락`;
+  $("oStage").textContent = stats.stage; $("oKills").textContent = stats.kills;
+  $("oTime").textContent = stats.time + "초"; $("oScore").textContent = stats.score.toLocaleString("ko-KR");
+  show("over");
+  saveScore(stats);
+}
+})();
+</script>
+<style>
+#installBox{display:grid;gap:8px;background:rgba(255,207,74,.1);border:1px solid rgba(255,207,74,.45);border-radius:4px;padding:12px}
+#installBox b{font-family:var(--display);font-weight:400;font-size:18px;color:var(--gold)}
+#installBox p{font-size:13px}
+#installBtn{background:var(--gold);color:#1a1405}
+</style>
+<script>
+(() => {
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  const standalone = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone;
+  if (standalone) { try { screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape").catch(() => {}); } catch(e){} return; }
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const box = document.createElement("div"); box.id = "installBox"; box.hidden = true;
+  const t = document.createElement("b"); t.textContent = "앱으로 설치하기";
+  const d = document.createElement("p");
+  const btn = document.createElement("button"); btn.type = "button"; btn.className = "btn"; btn.id = "installBtn"; btn.textContent = "폰에 앱 설치"; btn.hidden = true;
+  box.append(t, d, btn);
+  const start = document.getElementById("startBtn"); start.after(box);
+  let deferred = null;
+  window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferred = e; d.textContent = "설치하면 홈 화면 아이콘으로 열리고, 주소창 없이 전체화면 가로 모드로 실행돼요."; btn.hidden = false; box.hidden = false; });
+  btn.addEventListener("click", async () => { if (!deferred) return; deferred.prompt(); const r = await deferred.userChoice.catch(() => null); deferred = null; if (r && r.outcome === "accepted") { d.textContent = "설치했어요! 홈 화면의 아이콘으로 열어 주세요."; btn.hidden = true; } });
+  window.addEventListener("appinstalled", () => { d.textContent = "설치했어요! 홈 화면의 아이콘으로 열어 주세요."; btn.hidden = true; });
+  if (isIOS) { d.textContent = "사파리 아래쪽 공유 버튼(네모에 화살표) → '홈 화면에 추가'를 누르면 앱처럼 설치돼요. 설치한 아이콘으로 열면 주소창 없이 실행돼요."; box.hidden = false; }
+  else if (matchMedia("(pointer: coarse)").matches) setTimeout(() => { if (!deferred) { d.textContent = "크롬 오른쪽 위 ⋮ 메뉴 → '앱 설치' 또는 '홈 화면에 추가'를 누르면 앱처럼 설치돼요."; box.hidden = false; } }, 2500);
+})();
+</script>
+
+</body>
+</html>
